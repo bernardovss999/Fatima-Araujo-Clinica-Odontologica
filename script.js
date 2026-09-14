@@ -10,6 +10,8 @@ const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = window.matchMedia('(pointer: fine)').matches;
 
+requestAnimationFrame(() => document.body.classList.add('is-ready'));
+
 /* ---------------------------------------------------------
    CONTEÚDO DO MURAL DE DEPOIMENTOS
    Para acrescentar uma avaliação real, basta copiar um bloco
@@ -34,31 +36,7 @@ const WA = 'https://wa.me/5521964075922';
 const GOOGLE_REVIEWS = 'https://www.google.com/maps/place/F%C3%81TIMA+ARAUJO+CLINICA+ODONTOL%C3%93GICA+LTDA/@-22.8996434,-43.1112065,17z/data=!4m6!3m5!1s0x9983ab9a8b00d9:0x269f2baebf61691!8m2!3d-22.9004538!4d-43.1103053!16s%2Fg%2F1ptwfx_s6';
 
 
-/* ---------- 1. TEMA ---------- */
-(function theme(){
-  const root = document.documentElement;
-  const btn = $('#themeBtn');
-  const saved = (() => { try { return localStorage.getItem('fa-theme'); } catch { return null; } })();
-  const system = window.matchMedia('(prefers-color-scheme: dark)');
-
-  const apply = (t) => {
-    root.setAttribute('data-theme', t);
-    const meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', t === 'dark' ? '#14100E' : '#6D1F23');
-  };
-
-  apply(saved || (system.matches ? 'dark' : 'light'));
-  system.addEventListener('change', (e) => { if (!localStorage.getItem('fa-theme')) apply(e.matches ? 'dark' : 'light'); });
-
-  btn?.addEventListener('click', () => {
-    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    apply(next);
-    try { localStorage.setItem('fa-theme', next); } catch {}
-  });
-})();
-
-
-/* ---------- 2. TÍTULO POR CARACTERE ---------- */
+/* ---------- 1. TÍTULO POR CARACTERE ---------- */
 function splitText(el){
   let i = 0;
   const walk = (node) => {
@@ -363,15 +341,14 @@ $$('.hero-serv a[data-go]').forEach((a) => {
 
 /* ---------- 11. PARALAXE DO HERO ---------- */
 (function parallax(){
-  const bg = $('#heroBg'), card = $('#heroCard'), hero = $('#inicio');
-  if (!hero || reduced) return;
+  const portrait = $('#heroPortrait'), hero = $('#inicio');
+  if (!hero || !portrait || reduced) return;
   let ticking = false;
 
   const run = () => {
     const y = window.scrollY;
     if (y < window.innerHeight * 1.4) {
-      if (bg) bg.style.setProperty('--py', (y * .16).toFixed(1) + 'px');
-      if (card) card.style.setProperty('--cy', (y * -.07).toFixed(1) + 'px');
+      portrait.style.setProperty('--cy', (y * -.045).toFixed(1) + 'px');
     }
     ticking = false;
   };
@@ -379,20 +356,6 @@ $$('.hero-serv a[data-go]').forEach((a) => {
   window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(run); } }, { passive: true });
   run();
 
-  // inclinação 3D do cartão conforme o ponteiro
-  if (card && finePointer) {
-    hero.addEventListener('pointermove', (e) => {
-      const r = hero.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - .5;
-      const y = (e.clientY - r.top) / r.height - .5;
-      card.style.setProperty('--ry', (x * 7).toFixed(2) + 'deg');
-      card.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
-    });
-    hero.addEventListener('pointerleave', () => {
-      card.style.setProperty('--ry', '0deg');
-      card.style.setProperty('--rx', '0deg');
-    });
-  }
 })();
 
 
@@ -434,6 +397,13 @@ $$('.hero-serv a[data-go]').forEach((a) => {
   const speeds = [16, 21, 18];
   const flatQuery = window.matchMedia('(max-width: 900px)');
 
+  const sequence = (items) => {
+    const group = document.createElement('div');
+    group.className = 'wall-sequence';
+    items.forEach((item) => group.appendChild(card(item)));
+    return group;
+  };
+
   const build = () => {
     const flat = flatQuery.matches;
     stage.innerHTML = '';
@@ -442,8 +412,7 @@ $$('.hero-serv a[data-go]').forEach((a) => {
     if (flat) {
       const col = document.createElement('div');
       col.className = 'wall-col';
-      // duas voltas para o laço horizontal ficar contínuo
-      MURAL.concat(MURAL).forEach((item) => col.appendChild(card(item)));
+      col.append(sequence(MURAL), sequence(MURAL));
       if (reduced) col.style.animation = 'none';
       stage.appendChild(col);
       return;
@@ -457,7 +426,7 @@ $$('.hero-serv a[data-go]').forEach((a) => {
       // reparte os cartões entre as colunas: nenhum aparece duas vezes ao mesmo tempo
       let own = MURAL.filter((_, i) => i % cols === c);
       while (own.length < 4) own = own.concat(own);
-      own.concat(own).forEach((item) => col.appendChild(card(item)));
+      col.append(sequence(own), sequence(own));
       if (reduced) col.style.animation = 'none';
       stage.appendChild(col);
     }
